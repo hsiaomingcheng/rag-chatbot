@@ -21,4 +21,4 @@ COLLECTION_NAME = "candidate_profile"
 
 CHUNK_SIZE = 800  # max characters per chunk
 CHUNK_OVERLAP = 100  # characters shared between neighbouring chunks
-TOP_K = 3  # how many chunks to retrieve per question
+TOP_K = 5  # how many chunks to retrieve per question
