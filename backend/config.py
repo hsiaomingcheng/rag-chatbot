@@ -22,3 +22,7 @@ COLLECTION_NAME = "candidate_profile"
 CHUNK_SIZE = 800  # max characters per chunk
 CHUNK_OVERLAP = 100  # characters shared between neighbouring chunks
 TOP_K = 5  # how many chunks to retrieve per question
+
+MAX_QUESTION_CHARS = 500  # reject longer questions so nobody can burn the free quota
+# Websites allowed to call this API, comma-separated. Set ALLOWED_ORIGINS on the server.
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173").split(",")
