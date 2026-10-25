@@ -1,0 +1,21 @@
+# Render Blueprint: describes the backend service so Render can set it up in one go.
+services:
+  - type: web
+    name: rag-chatbot-api
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+    envVars:
+      # Pinned so the cloud matches the Python we developed and tested with.
+      - key: PYTHON_VERSION
+        value: 3.14.8
+      # Secrets and per-environment values: Render asks you to type these in
+      # when the service is created. They are never stored in this file.
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false
