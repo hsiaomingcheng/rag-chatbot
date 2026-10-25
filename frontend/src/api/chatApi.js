@@ -17,6 +17,18 @@ async function readErrorMessage(response) {
   return fallback
 }
 
+/** Returns true if the backend answers. A sleeping server just times out. */
+export async function checkHealth() {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/health`, {
+      signal: AbortSignal.timeout(5000),
+    })
+    return response.ok
+  } catch {
+    return false
+  }
+}
+
 /**
  * Ask a question and receive the answer piece by piece.
  * `onText` is called with each new piece of text as it arrives.

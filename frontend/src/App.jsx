@@ -3,6 +3,8 @@ import { ChatError, streamAnswer } from './api/chatApi'
 import ChatHeader from './components/ChatHeader'
 import ChatInput from './components/ChatInput'
 import MessageList from './components/MessageList'
+import ServerBanner from './components/ServerBanner'
+import useServerStatus from './hooks/useServerStatus'
 
 const WELCOME = {
   id: 'welcome',
@@ -16,6 +18,9 @@ export default function App() {
   const [messages, setMessages] = useState([WELCOME])
   // idle: ready | waiting: sent, no text yet | streaming: answer arriving
   const [status, setStatus] = useState('idle')
+  const serverStatus = useServerStatus()
+  // Hold off sending while the server is still waking up.
+  const blocked = status !== 'idle' || serverStatus === 'waking'
 
   const handleSend = async (question) => {
     const answerId = crypto.randomUUID()
@@ -59,13 +64,14 @@ export default function App() {
   return (
     <div className="mx-auto flex h-full max-w-3xl flex-col bg-white dark:bg-slate-950">
       <ChatHeader />
+      <ServerBanner serverStatus={serverStatus} />
       <MessageList
         messages={messages}
         showTyping={status === 'waiting'}
-        busy={status !== 'idle'}
+        busy={blocked}
         onPickQuestion={handleSend}
       />
-      <ChatInput onSend={handleSend} disabled={status !== 'idle'} />
+      <ChatInput onSend={handleSend} disabled={blocked} />
     </div>
   )
 }
