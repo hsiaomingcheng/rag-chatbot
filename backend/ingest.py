@@ -3,6 +3,7 @@
 Run from the backend folder:  .venv/bin/python ingest.py
 """
 
+import hashlib
 import re
 
 import chromadb
@@ -74,11 +75,17 @@ def embed_documents(client, chunks):
     return vectors
 
 
-def main():
-    if not config.GEMINI_API_KEY or config.GEMINI_API_KEY == "your_api_key_here":
-        raise SystemExit("GEMINI_API_KEY is missing. Put your key in the .env file.")
+def fingerprint(text):
+    """A short code that changes whenever the knowledge base text changes."""
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
-    text = load_text(config.KNOWLEDGE_BASE_PATH)
+
+def has_api_key():
+    return bool(config.GEMINI_API_KEY) and config.GEMINI_API_KEY != "your_api_key_here"
+
+
+def build_database(text):
+    """Embed the knowledge base and store it in ChromaDB, replacing any old copy."""
     chunks = build_chunks(text)
     print(f"Split the knowledge base into {len(chunks)} chunks.")
 
@@ -92,7 +99,9 @@ def main():
     except Exception:
         pass
     collection = db.create_collection(
-        config.COLLECTION_NAME, metadata={"hnsw:space": "cosine"}
+        config.COLLECTION_NAME,
+        # The fingerprint lets ensure_database() tell if the stored copy is current.
+        metadata={"hnsw:space": "cosine", "source_hash": fingerprint(text)},
     )
     collection.add(
         ids=[f"chunk-{i}" for i in range(len(chunks))],
@@ -100,6 +109,36 @@ def main():
         embeddings=vectors,
     )
     print(f"Stored {collection.count()} chunks in {config.CHROMA_DIR}")
+
+
+def ensure_database():
+    """Build the database only if it is missing or out of date. Returns True if rebuilt.
+
+    Free hosting wipes the disk on restart, so the server calls this on startup.
+    """
+    text = load_text(config.KNOWLEDGE_BASE_PATH)
+    db = chromadb.PersistentClient(path=str(config.CHROMA_DIR))
+    try:
+        collection = db.get_collection(config.COLLECTION_NAME)
+        up_to_date = (
+            collection.count() > 0
+            and (collection.metadata or {}).get("source_hash") == fingerprint(text)
+        )
+    except Exception:
+        up_to_date = False
+
+    if up_to_date:
+        print("Knowledge base is up to date; skipping ingest.")
+        return False
+
+    build_database(text)
+    return True
+
+
+def main():
+    if not has_api_key():
+        raise SystemExit("GEMINI_API_KEY is missing. Put your key in the .env file.")
+    build_database(load_text(config.KNOWLEDGE_BASE_PATH))
 
 
 if __name__ == "__main__":
